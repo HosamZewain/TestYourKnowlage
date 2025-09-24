@@ -1,6 +1,7 @@
 export const translations = {
   en: {
     title: "Test Your Knowledge",
+    headerSubtitle: "An AI-powered quiz with a focus on the MENA region",
     subtitle: "Challenge yourself with an AI-powered quiz! Choose your topics and answer 20 questions generated just for you by Gemini, with a focus on the MENA region.",
     startGame: "Start Game",
     chooseCategory: "Choose Your Topics",
@@ -68,6 +69,7 @@ export const translations = {
   },
   ar: {
     title: "اختبر معلوماتك",
+    headerSubtitle: "اختبار مدعوم بالذكاء الاصطناعي مع التركيز على منطقة الشرق الأوسط وشمال إفريقيا",
     subtitle: "تحدَّ نفسك في اختبار مدعوم بالذكاء الاصطناعي! اختر مواضيعك وأجب على 20 سؤالاً تم إنشاؤها لك بواسطة Gemini، مع التركيز على منطقة الشرق الأوسط وشمال إفريقيا.",
     startGame: "ابدأ اللعبة",
     chooseCategory: "اختر مواضيعك",

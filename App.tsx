@@ -9,6 +9,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import LanguageSelection from './components/LanguageSelection';
 import AuthScreen from './components/AuthScreen';
 import DashboardScreen from './components/DashboardScreen';
+import Header from './components/Header';
 import { generateQuizQuestions } from './services/geminiService';
 import * as authService from './services/authService';
 import { auth } from './services/firebase'; // Import auth for the listener
@@ -204,11 +205,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="relative min-h-screen bg-gray-900 bg-gradient-to-br from-gray-900 via-purple-900/60 to-gray-900 text-white flex items-center justify-center p-4">
-      <div className="w-full h-full">
+    <div className="min-h-screen bg-gray-900 bg-gradient-to-br from-gray-900 via-purple-900/60 to-gray-900 text-white flex flex-col p-4">
+      {gameState !== GameState.LanguageSelection && <Header t={t} />}
+      <main className="flex-grow w-full flex items-center justify-center">
         {renderContent()}
-      </div>
-      <footer className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-gray-500 text-sm w-full px-4">
+      </main>
+      <footer className="text-center text-gray-500 text-sm w-full py-2">
         Developed With ❤️ BY AI -{' '}
         <a
           href="https://www.linkedin.com/in/hosamzewain/"
@@ -219,7 +221,7 @@ const App: React.FC = () => {
           Hosam Zewain
         </a>
       </footer>
-    </main>
+    </div>
   );
 };
 
