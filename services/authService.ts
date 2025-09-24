@@ -2,39 +2,60 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  User as FirebaseUser,
 } from 'firebase/auth';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  Timestamp,
-} from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { auth } from './firebase';
 import { User, QuizResult } from '../types';
 
+const PROFILES_KEY = 'quiz_user_profiles';
+const RESULTS_KEY = 'quiz_results';
+
+// Helper to get items from localStorage
+const getFromStorage = <T>(key: string): T[] => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : [];
+  } catch (error) {
+    console.error(`Error reading from localStorage key "${key}":`, error);
+    return [];
+  }
+};
+
+// Helper to save items to localStorage
+const saveToStorage = <T>(key: string, data: T[]): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Error saving to localStorage key "${key}":`, error);
+  }
+};
+
+
 // --- User Management ---
+
+// FIX: Add createUserProfile function to create a user profile in localStorage.
+// This function is used by App.tsx, signUp, and signIn to ensure profiles are
+// created consistently.
+export async function createUserProfile(userId: string, name: string | null, email: string | null): Promise<User> {
+  const newUser: User = {
+    id: userId,
+    name: name || (email && email.split('@')[0]) || 'User',
+    email: email || '',
+  };
+
+  const profiles = getFromStorage<User>(PROFILES_KEY);
+  const existingProfile = profiles.find(p => p.id === newUser.id);
+  if (!existingProfile) {
+    profiles.push(newUser);
+    saveToStorage(PROFILES_KEY, profiles);
+  }
+  
+  return newUser;
+}
 
 export async function signUp(name: string, email: string, password_used: string): Promise<User> {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password_used);
   const firebaseUser = userCredential.user;
-
-  const newUser: User = {
-    id: firebaseUser.uid, // Use Firebase UID as the user ID
-    name,
-    email: firebaseUser.email || '',
-  };
-  
-  // Create a user profile document in Firestore
-  await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-  
-  return newUser;
+  return createUserProfile(firebaseUser.uid, name, firebaseUser.email);
 }
 
 export async function signIn(email: string, password_used: string): Promise<User> {
@@ -42,10 +63,14 @@ export async function signIn(email: string, password_used: string): Promise<User
   const firebaseUser = userCredential.user;
   
   const userProfile = await getUserProfile(firebaseUser.uid);
-  if (!userProfile) {
-      throw new Error("User profile not found.");
+  if (userProfile) {
+    return userProfile;
   }
-  return userProfile;
+
+  // This can happen if localStorage was cleared but the user still exists in Firebase Auth.
+  // We recreate the profile here for a better user experience.
+  const name = firebaseUser.displayName || email.split('@')[0] || 'User';
+  return createUserProfile(firebaseUser.uid, name, firebaseUser.email);
 }
 
 export async function signOut(): Promise<void> {
@@ -53,48 +78,34 @@ export async function signOut(): Promise<void> {
 }
 
 export async function getUserProfile(userId: string): Promise<User | null> {
-    const userDocRef = doc(db, 'users', userId);
-    const userDocSnap = await getDoc(userDocRef);
-    if (userDocSnap.exists()) {
-        return userDocSnap.data() as User;
-    }
-    return null;
+    const profiles = getFromStorage<User>(PROFILES_KEY);
+    const profile = profiles.find(p => p.id === userId);
+    return Promise.resolve(profile || null);
 }
 
 
 // --- Quiz Result Management ---
 
 export async function saveQuizResult(resultData: Omit<QuizResult, 'id' | 'date'>): Promise<QuizResult> {
-  const resultToSave = {
-    ...resultData,
-    date: Timestamp.now(), // Use Firestore Timestamp for accurate sorting
-  };
+  const allResults = getFromStorage<QuizResult>(RESULTS_KEY);
   
-  const docRef = await addDoc(collection(db, "results"), resultToSave);
-
-  return {
+  const newResult: QuizResult = {
       ...resultData,
-      id: docRef.id,
-      date: new Date().toISOString(), // Return as ISO string for frontend
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // simple unique id
+      date: new Date().toISOString(),
   };
+
+  allResults.push(newResult);
+  saveToStorage(RESULTS_KEY, allResults);
+
+  return Promise.resolve(newResult);
 }
 
 export async function getQuizResultsForUser(userId: string): Promise<QuizResult[]> {
-    const resultsCollection = collection(db, 'results');
-    const q = query(
-        resultsCollection, 
-        where("userId", "==", userId),
-        orderBy("date", "desc")
-    );
+    const allResults = getFromStorage<QuizResult>(RESULTS_KEY);
+    const userResults = allResults
+        .filter(result => result.userId === userId)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort descending
 
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            ...data,
-            date: (data.date as Timestamp).toDate().toISOString(),
-        } as QuizResult;
-    });
+    return Promise.resolve(userResults);
 }

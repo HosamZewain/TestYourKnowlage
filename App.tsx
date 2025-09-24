@@ -40,29 +40,42 @@ const App: React.FC = () => {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        // User is signed in
-        const userProfile = await authService.getUserProfile(firebaseUser.uid);
-        const results = await authService.getQuizResultsForUser(firebaseUser.uid);
-        setCurrentUser(userProfile);
-        setUserResults(results);
-        setGameState(GameState.Dashboard);
-      } else {
-        // User is signed out
-        setCurrentUser(null);
-        setUserResults([]);
-        if (localStorage.getItem('quiz_language')) {
-          setGameState(GameState.Auth);
+      try {
+        if (firebaseUser) {
+          // User is signed in, fetch their data from localStorage
+          const userProfile = await authService.getUserProfile(firebaseUser.uid);
+           if (!userProfile) {
+            // This can happen if localStorage was cleared. Recreate it.
+            const newProfile = await authService.createUserProfile(firebaseUser.uid, firebaseUser.displayName, firebaseUser.email);
+            setCurrentUser(newProfile);
+           } else {
+            setCurrentUser(userProfile);
+           }
+          const results = await authService.getQuizResultsForUser(firebaseUser.uid);
+          setUserResults(results);
+          setGameState(GameState.Dashboard);
         } else {
-          setGameState(GameState.LanguageSelection);
+          // User is signed out, reset state
+          setCurrentUser(null);
+          setUserResults([]);
+          if (localStorage.getItem('quiz_language')) {
+            setGameState(GameState.Auth);
+          } else {
+            setGameState(GameState.LanguageSelection);
+          }
         }
+      } catch (err) {
+        console.error("Error during authentication state check:", err);
+        setError("An unexpected error occurred during startup.");
+        setGameState(GameState.Auth);
+      } finally {
+        setIsLoading(false); // Auth check is complete
       }
-      setIsLoading(false); // Auth check is complete
     });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, []); // This effect should only run once on mount
 
   // This effect reacts to language changes to set document attributes
   useEffect(() => {
@@ -191,10 +204,21 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-gray-900 bg-gradient-to-br from-gray-900 via-purple-900/60 to-gray-900 text-white flex items-center justify-center p-4">
+    <main className="relative min-h-screen bg-gray-900 bg-gradient-to-br from-gray-900 via-purple-900/60 to-gray-900 text-white flex items-center justify-center p-4">
       <div className="w-full h-full">
         {renderContent()}
       </div>
+      <footer className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-gray-500 text-sm w-full px-4">
+        Developed With ❤️ BY AI -{' '}
+        <a
+          href="https://www.linkedin.com/in/hosamzewain/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+        >
+          Hosam Zewain
+        </a>
+      </footer>
     </main>
   );
 };
