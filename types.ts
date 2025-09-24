@@ -6,7 +6,8 @@ export interface Question {
 
 export enum GameState {
   LanguageSelection,
-  Start,
+  Auth,
+  Dashboard,
   CategorySelection,
   DifficultySelection,
   Quiz,
@@ -18,4 +19,21 @@ export type Language = 'en' | 'ar';
 export interface Category {
   name: string;
   subcategories: string[];
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface QuizResult {
+  id: string;
+  userId: string;
+  date: string;
+  topics: string[];
+  difficulty: string;
+  score: number;
+  total: number;
+  scorePercentage: number;
 }

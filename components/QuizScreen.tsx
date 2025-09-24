@@ -6,9 +6,11 @@ interface QuizScreenProps {
   questions: Question[];
   onComplete: (answers: string[]) => void;
   t: any;
+  skipsRemaining: number;
+  onUseSkip: () => void;
 }
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ questions, onComplete, t }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ questions, onComplete, t, skipsRemaining, onUseSkip }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -31,6 +33,21 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ questions, onComplete, t }) => 
     if (!selectedOption) return;
     
     const newAnswers = [...userAnswers, selectedOption];
+    setUserAnswers(newAnswers);
+
+    if (currentQuestionIndex < TOTAL_QUESTIONS - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      onComplete(newAnswers);
+    }
+  };
+
+  const handleSkipClick = () => {
+    if (skipsRemaining <= 0) return;
+
+    onUseSkip();
+
+    const newAnswers = [...userAnswers, 'SKIPPED'];
     setUserAnswers(newAnswers);
 
     if (currentQuestionIndex < TOTAL_QUESTIONS - 1) {
@@ -84,8 +101,17 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ questions, onComplete, t }) => 
           ))}
         </div>
         
-        {/* Next Button */}
-        <div className="mt-8 text-end">
+        {/* Action Buttons */}
+        <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end sm:items-center gap-4">
+          <button
+            onClick={handleSkipClick}
+            disabled={skipsRemaining <= 0}
+            className="px-6 py-3 bg-gray-600/80 text-white font-bold rounded-full shadow-lg 
+                       hover:bg-gray-700 transform transition-all duration-300 ease-in-out
+                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-600/80"
+          >
+            {t.skipWithCount(skipsRemaining)}
+          </button>
           <button
             onClick={handleNextQuestion}
             disabled={!selectedOption}
